@@ -20,7 +20,7 @@ class SqlBeautifierCommand(sublime_plugin.TextCommand):
     def format_sql(self, raw_sql):
         try:
             return sqlparse.format(raw_sql, reindent=True, keyword_case='upper')
-        except Exception e:
+        except Exception as e:
             print(e)
             return None
 
