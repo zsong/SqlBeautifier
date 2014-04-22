@@ -1,11 +1,11 @@
 import sublime, sublime_plugin
 
-try:
-    #python 3
-    from . import sqlparse as sqlparse
-except (ValueError):
-    #python 2
-    import sqlparse
+import sys
+import os
+
+sys.path.append(os.path.dirname(__file__))
+
+import sqlparse
 
 class SqlBeautifierCommand(sublime_plugin.TextCommand):
     def normalize_line_endings(self, string):
