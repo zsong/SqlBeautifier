@@ -16,7 +16,15 @@ import re
 
 from sqlparse import tokens
 from sqlparse.keywords import KEYWORDS, KEYWORDS_COMMON
-from io import StringIO
+
+try:
+    # Python 3
+    from io import BytesIO as StringIO
+except (ImportError):
+    # Python 2
+    from StringIO import StringIO
+
+
 import collections
 
 
