@@ -2,7 +2,7 @@ import sublime, sublime_plugin
 
 try:
     #python 3
-    from . import sqlparse
+    from . import sqlparse as sqlparse
 except (ValueError):
     #python 2
     import sqlparse
