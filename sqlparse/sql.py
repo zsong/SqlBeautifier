@@ -25,7 +25,7 @@ class Token(object):
         self.parent = None
 
     def __str__(self):
-        return unicode(self).encode('utf-8')
+        return str(self).encode('utf-8')
 
     def __repr__(self):
         short = self._get_repr_value().encode('utf-8')
@@ -41,15 +41,15 @@ class Token(object):
 
         @deprecated: please use __unicode__()
         """
-        return unicode(self)
+        return str(self)
 
     def _get_repr_name(self):
         return str(self.ttype).split('.')[-1]
 
     def _get_repr_value(self):
-        raw = unicode(self)
+        raw = str(self)
         if len(raw) > 7:
-            raw = raw[:6] + u'...'
+            raw = raw[:6] + '...'
         return re.sub('\s+', ' ', raw)
 
     def flatten(self):
@@ -73,7 +73,7 @@ class Token(object):
             return type_matched
 
         if regex:
-            if isinstance(values, basestring):
+            if isinstance(values, str):
                 values = set([values])
 
             if self.ttype is T.Keyword:
@@ -86,7 +86,7 @@ class Token(object):
                     return True
             return False
 
-        if isinstance(values, basestring):
+        if isinstance(values, str):
             if self.is_keyword:
                 return values.upper() == self.normalized
             return values == self.value
@@ -147,10 +147,10 @@ class TokenList(Token):
         if tokens is None:
             tokens = []
         self.tokens = tokens
-        Token.__init__(self, None, unicode(self))
+        Token.__init__(self, None, str(self))
 
     def __unicode__(self):
-        return ''.join(unicode(x) for x in self.flatten())
+        return ''.join(str(x) for x in self.flatten())
 
     def _get_repr_name(self):
         return self.__class__.__name__
@@ -163,9 +163,9 @@ class TokenList(Token):
                 pre = ' +-'
             else:
                 pre = ' | '
-            print '%s%s%d %s \'%s\'' % (indent, pre, idx,
+            print('%s%s%d %s \'%s\'' % (indent, pre, idx,
                                         token._get_repr_name(),
-                                        token._get_repr_value())
+                                        token._get_repr_value()))
             if (token.is_group() and (max_depth is None or depth < max_depth)):
                 token._pprint_tree(max_depth, depth + 1)
 
@@ -249,7 +249,7 @@ class TokenList(Token):
         if not isinstance(idx, int):
             idx = self.token_index(idx)
 
-        for n in xrange(idx, len(self.tokens)):
+        for n in range(idx, len(self.tokens)):
             token = self.tokens[n]
             if token.match(ttype, value, regex):
                 return token
@@ -373,7 +373,7 @@ class TokenList(Token):
             alias = next_
         if isinstance(alias, Identifier):
             return alias.get_name()
-        return self._remove_quotes(unicode(alias))
+        return self._remove_quotes(str(alias))
 
     def get_name(self):
         """Returns the name of this identifier.
@@ -462,7 +462,7 @@ class Identifier(TokenList):
         next_ = self.token_next(self.token_index(marker), False)
         if next_ is None:
             return None
-        return unicode(next_)
+        return str(next_)
 
 
 class IdentifierList(TokenList):

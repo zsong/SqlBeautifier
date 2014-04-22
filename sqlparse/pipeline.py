@@ -4,6 +4,7 @@
 # the BSD License: http://www.opensource.org/licenses/bsd-license.php.
 
 from types import GeneratorType
+import collections
 
 
 class Pipeline(list):
@@ -18,8 +19,8 @@ class Pipeline(list):
         # Run the stream over all the filters on the pipeline
         for filter in self:
             # Functions and callable objects (objects with '__call__' method)
-            if callable(filter):
-                stream = filter(stream)
+            if isinstance(filter, collections.Callable):
+                stream = list(filter(stream))
 
             # Normal filters (objects with 'process' method)
             else:

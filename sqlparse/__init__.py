@@ -59,7 +59,7 @@ def split(sql):
     """
     stack = engine.FilterStack()
     stack.split_statements = True
-    return [unicode(stmt) for stmt in stack.run(sql)]
+    return [str(stmt) for stmt in stack.run(sql)]
 
 
 from sqlparse.engine.filter import StatementFilter

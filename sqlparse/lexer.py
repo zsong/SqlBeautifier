@@ -16,7 +16,8 @@ import re
 
 from sqlparse import tokens
 from sqlparse.keywords import KEYWORDS, KEYWORDS_COMMON
-from cStringIO import StringIO
+from io import StringIO
+import collections
 
 
 class include(str):
@@ -80,12 +81,12 @@ class LexerMeta(type):
 
             try:
                 rex = re.compile(tdef[0], rflags).match
-            except Exception, err:
+            except Exception as err:
                 raise ValueError(("uncompilable regex %r in state"
                                   " %r of %r: %s"
                                   % (tdef[0], state, cls, err)))
 
-            assert type(tdef[1]) is tokens._TokenType or callable(tdef[1]), \
+            assert type(tdef[1]) is tokens._TokenType or isinstance(tdef[1], collections.Callable), \
                    ('token type must be simple type or callable, not %r'
                     % (tdef[1],))
 
@@ -134,7 +135,7 @@ class LexerMeta(type):
         cls._tmpname = 0
         processed = cls._all_tokens[cls.__name__] = {}
         #tokendefs = tokendefs or cls.tokens[name]
-        for state in cls.tokens.keys():
+        for state in list(cls.tokens.keys()):
             cls._process_state(cls.tokens, processed, state)
         return processed
 
@@ -151,9 +152,7 @@ class LexerMeta(type):
         return type.__call__(cls, *args, **kwds)
 
 
-class Lexer(object):
-
-    __metaclass__ = LexerMeta
+class Lexer(object, metaclass=LexerMeta):
 
     encoding = 'utf-8'
     stripall = False
@@ -223,8 +222,8 @@ class Lexer(object):
         if self.encoding == 'guess':
             try:
                 text = text.decode('utf-8')
-                if text.startswith(u'\ufeff'):
-                    text = text[len(u'\ufeff'):]
+                if text.startswith('\ufeff'):
+                    text = text[len('\ufeff'):]
             except UnicodeDecodeError:
                 text = text.decode('latin1')
         else:
@@ -243,13 +242,13 @@ class Lexer(object):
         Also preprocess the text, i.e. expand tabs and strip it if
         wanted and applies registered filters.
         """
-        if isinstance(text, basestring):
+        if isinstance(text, str):
             if self.stripall:
                 text = text.strip()
             elif self.stripnl:
                 text = text.strip('\n')
 
-            if isinstance(text, unicode):
+            if isinstance(text, str):
                 text = StringIO(text.encode('utf-8'))
                 self.encoding = 'utf-8'
             else:
@@ -334,7 +333,7 @@ class Lexer(object):
                         pos += 1
                         statestack = ['root']
                         statetokens = tokendefs['root']
-                        yield pos, tokens.Text, u'\n'
+                        yield pos, tokens.Text, '\n'
                         continue
                     yield pos, tokens.Error, text[pos]
                     pos += 1
