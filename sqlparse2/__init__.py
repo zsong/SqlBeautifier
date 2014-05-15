@@ -15,7 +15,7 @@ from sqlparse2 import filters
 from sqlparse2 import formatter
 
 # Deprecated in 0.1.5. Will be removed in 0.2.0
-from sqlparse.exceptions import SQLParseError
+from sqlparse2.exceptions import SQLParseError
 
 
 def parse(sql):
