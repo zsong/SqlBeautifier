@@ -5,10 +5,10 @@ import os
 
 sys.path.append(os.path.dirname(__file__))
 
-try:
-    import sqlparse2 as sqlparse
-except Exception:
+if sys.version_info >= (3, 0):
     import sqlparse3 as sqlparse
+else:
+    import sqlparse2 as sqlparse
     
 class SqlBeautifierCommand(sublime_plugin.TextCommand):
     def normalize_line_endings(self, string):
