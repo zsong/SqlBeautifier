@@ -13,11 +13,19 @@
 # and to allow some customizations.
 
 import re
-import sys
 
 from sqlparse import tokens
 from sqlparse.keywords import KEYWORDS, KEYWORDS_COMMON
-from cStringIO import StringIO
+
+try:
+    # Python 3
+    from io import BytesIO as StringIO
+except (ImportError):
+    # Python 2
+    from StringIO import StringIO
+
+
+import collections
 
 
 class include(str):
@@ -81,12 +89,12 @@ class LexerMeta(type):
 
             try:
                 rex = re.compile(tdef[0], rflags).match
-            except Exception, err:
+            except Exception as err:
                 raise ValueError(("uncompilable regex %r in state"
                                   " %r of %r: %s"
                                   % (tdef[0], state, cls, err)))
 
-            assert type(tdef[1]) is tokens._TokenType or callable(tdef[1]), \
+            assert type(tdef[1]) is tokens._TokenType or isinstance(tdef[1], collections.Callable), \
                    ('token type must be simple type or callable, not %r'
                     % (tdef[1],))
 
@@ -135,7 +143,7 @@ class LexerMeta(type):
         cls._tmpname = 0
         processed = cls._all_tokens[cls.__name__] = {}
         #tokendefs = tokendefs or cls.tokens[name]
-        for state in cls.tokens.keys():
+        for state in list(cls.tokens.keys()):
             cls._process_state(cls.tokens, processed, state)
         return processed
 
@@ -152,15 +160,14 @@ class LexerMeta(type):
         return type.__call__(cls, *args, **kwds)
 
 
-class Lexer(object):
-
-    __metaclass__ = LexerMeta
+class Lexer(object, metaclass=LexerMeta):
 
     encoding = 'utf-8'
     stripall = False
     stripnl = False
     tabsize = 0
     flags = re.IGNORECASE | re.UNICODE
+    bufsize = 4096
 
     tokens = {
         'root': [
@@ -168,7 +175,7 @@ class Lexer(object):
             # $ matches *before* newline, therefore we have two patterns
             # to match Comment.Single
             (r'--.*?$', tokens.Comment.Single),
-            (r'(\r\n|\r|\n)', tokens.Newline),
+            (r'(\r|\n|\r\n)', tokens.Newline),
             (r'\s+', tokens.Whitespace),
             (r'/\*', tokens.Comment.Multiline, 'multiline-comments'),
             (r':=', tokens.Assignment),
@@ -177,9 +184,8 @@ class Lexer(object):
             (r'CASE\b', tokens.Keyword),  # extended CASE(foo)
             (r"`(``|[^`])*`", tokens.Name),
             (r"´(´´|[^´])*´", tokens.Name),
-            (r'\$([^\W\d]\w*)?\$', tokens.Name.Builtin),
+            (r'\$([^\W\d_]\w*)?\$', tokens.Name.Builtin),
             (r'\?{1}', tokens.Name.Placeholder),
-            (r'%\(\w+\)s', tokens.Name.Placeholder),
             (r'[$:?%]\w+', tokens.Name.Placeholder),
             # FIXME(andi): VALUES shouldn't be listed here
             # see https://github.com/andialbrecht/sqlparse/pull/64
@@ -187,18 +193,17 @@ class Lexer(object):
             (r'@[^\W\d_]\w+', tokens.Name),
             (r'[^\W\d_]\w*(?=[.(])', tokens.Name),  # see issue39
             (r'[-]?0x[0-9a-fA-F]+', tokens.Number.Hexadecimal),
-            (r'[-]?[0-9]*(\.[0-9]+)?[eE][-]?[0-9]+', tokens.Number.Float),
             (r'[-]?[0-9]*\.[0-9]+', tokens.Number.Float),
             (r'[-]?[0-9]+', tokens.Number.Integer),
             # TODO: Backslash escapes?
-            (r"'(''|\\'|[^'])*'", tokens.String.Single),
+            (r"(''|'.*?[^\\]')", tokens.String.Single),
             # not a real string literal in ANSI SQL:
             (r'(""|".*?[^\\]")', tokens.String.Symbol),
             (r'(\[.*[^\]]\])', tokens.Name),
-            (r'((LEFT\s+|RIGHT\s+|FULL\s+)?(INNER\s+|OUTER\s+|STRAIGHT\s+)?|(CROSS\s+|NATURAL\s+)?)?JOIN\b', tokens.Keyword),
-            (r'END(\s+IF|\s+LOOP)?\b', tokens.Keyword),
+            (r'(LEFT |RIGHT )?(INNER |OUTER )?JOIN\b', tokens.Keyword),
+            (r'END( IF| LOOP)?\b', tokens.Keyword),
             (r'NOT NULL\b', tokens.Keyword),
-            (r'CREATE(\s+OR\s+REPLACE)?\b', tokens.Keyword.DDL),
+            (r'CREATE( OR REPLACE)?\b', tokens.Keyword.DDL),
             (r'(?<=\.)[^\W\d_]\w*', tokens.Name),
             (r'[^\W\d_]\w*', is_keyword),
             (r'[;:()\[\],\.]', tokens.Punctuation),
@@ -209,7 +214,7 @@ class Lexer(object):
             (r'/\*', tokens.Comment.Multiline, 'multiline-comments'),
             (r'\*/', tokens.Comment.Multiline, '#pop'),
             (r'[^/\*]+', tokens.Comment.Multiline),
-            (r'[/*]', tokens.Comment.Multiline),
+            (r'[/*]', tokens.Comment.Multiline)
         ]}
 
     def __init__(self):
@@ -222,21 +227,15 @@ class Lexer(object):
         self.filters.append(filter_)
 
     def _decode(self, text):
-        if sys.version_info[0] == 3:
-            if isinstance(text, str):
-                return text
         if self.encoding == 'guess':
             try:
                 text = text.decode('utf-8')
-                if text.startswith(u'\ufeff'):
-                    text = text[len(u'\ufeff'):]
+                if text.startswith('\ufeff'):
+                    text = text[len('\ufeff'):]
             except UnicodeDecodeError:
                 text = text.decode('latin1')
         else:
-            try:
-                text = text.decode(self.encoding)
-            except UnicodeDecodeError:
-                text = text.decode('unicode-escape')
+            text = text.decode(self.encoding)
 
         if self.tabsize > 0:
             text = text.expandtabs(self.tabsize)
@@ -251,13 +250,13 @@ class Lexer(object):
         Also preprocess the text, i.e. expand tabs and strip it if
         wanted and applies registered filters.
         """
-        if isinstance(text, basestring):
+        if isinstance(text, str):
             if self.stripall:
                 text = text.strip()
             elif self.stripnl:
                 text = text.strip('\n')
 
-            if sys.version_info[0] < 3 and isinstance(text, unicode):
+            if isinstance(text, str):
                 text = StringIO(text.encode('utf-8'))
                 self.encoding = 'utf-8'
             else:
@@ -283,13 +282,18 @@ class Lexer(object):
         statetokens = tokendefs[statestack[-1]]
         known_names = {}
 
-        text = stream.read()
+        text = stream.read(self.bufsize)
+        hasmore = len(text) == self.bufsize
         text = self._decode(text)
 
         while 1:
             for rexmatch, action, new_state in statetokens:
                 m = rexmatch(text, pos)
                 if m:
+                    if hasmore and m.end() == len(text):
+                        # Since this is end, token may be truncated
+                        continue
+
                     # print rex.pattern
                     value = m.group()
                     if value in known_names:
@@ -324,13 +328,20 @@ class Lexer(object):
                         statetokens = tokendefs[statestack[-1]]
                     break
             else:
+                if hasmore:
+                    buf = stream.read(self.bufsize)
+                    hasmore = len(buf) == self.bufsize
+                    text = text[pos:] + self._decode(buf)
+                    pos = 0
+                    continue
+
                 try:
                     if text[pos] == '\n':
                         # at EOL, reset state to "root"
                         pos += 1
                         statestack = ['root']
                         statetokens = tokendefs['root']
-                        yield pos, tokens.Text, u'\n'
+                        yield pos, tokens.Text, '\n'
                         continue
                     yield pos, tokens.Error, text[pos]
                     pos += 1
@@ -338,13 +349,11 @@ class Lexer(object):
                     break
 
 
-def tokenize(sql, encoding=None):
+def tokenize(sql):
     """Tokenize sql.
 
     Tokenize *sql* using the :class:`Lexer` and return a 2-tuple stream
     of ``(token type, value)`` items.
     """
     lexer = Lexer()
-    if encoding is not None:
-        lexer.encoding = encoding
     return lexer.get_tokens(sql)

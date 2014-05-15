@@ -36,8 +36,8 @@ class FilterStack(object):
     def full_analyze(self):
         self.enable_grouping()
 
-    def run(self, sql, encoding=None):
-        stream = lexer.tokenize(sql, encoding)
+    def run(self, sql):
+        stream = lexer.tokenize(sql)
         # Process token stream
         if self.preprocess:
             for filter_ in self.preprocess:

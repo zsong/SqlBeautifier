@@ -11,7 +11,6 @@ from sqlparse.pipeline import Pipeline
 from sqlparse.tokens import (Comment, Comparison, Keyword, Name, Punctuation,
                              String, Whitespace)
 from sqlparse.utils import memoize_generator
-from sqlparse.utils import split_unquoted_newlines
 
 
 # --------------------------
@@ -25,7 +24,7 @@ class _CaseFilter:
         if case is None:
             case = 'upper'
         assert case in ['lower', 'upper', 'capitalize']
-        self.convert = getattr(unicode, case)
+        self.convert = getattr(str, case)
 
     def process(self, stack, stream):
         for ttype, value in stream:
@@ -45,27 +44,6 @@ class IdentifierCaseFilter(_CaseFilter):
         for ttype, value in stream:
             if ttype in self.ttype and not value.strip()[0] == '"':
                 value = self.convert(value)
-            yield ttype, value
-
-
-class TruncateStringFilter:
-
-    def __init__(self, width, char):
-        self.width = max(width, 1)
-        self.char = unicode(char)
-
-    def process(self, stack, stream):
-        for ttype, value in stream:
-            if ttype is T.Literal.String.Single:
-                if value[:2] == '\'\'':
-                    inner = value[2:-2]
-                    quote = u'\'\''
-                else:
-                    inner = value[1:-1]
-                    quote = u'\''
-                if len(inner) > self.width:
-                    value = u''.join((quote, inner[:self.width], self.char,
-                                      quote))
             yield ttype, value
 
 
@@ -154,13 +132,13 @@ class IncludeStatement:
                         f.close()
 
                     # There was a problem loading the include file
-                    except IOError, err:
+                    except IOError as err:
                         # Raise the exception to the interpreter
                         if self.raiseexceptions:
                             raise
 
                         # Put the exception as a comment on the SQL code
-                        yield Comment, u'-- IOError: %s\n' % err
+                        yield Comment, '-- IOError: %s\n' % err
 
                     else:
                         # Create new FilterStack to parse readed file
@@ -171,13 +149,13 @@ class IncludeStatement:
                                                      self.raiseexceptions)
 
                         # Max recursion limit reached
-                        except ValueError, err:
+                        except ValueError as err:
                             # Raise the exception to the interpreter
                             if self.raiseexceptions:
                                 raise
 
                             # Put the exception as a comment on the SQL code
-                            yield Comment, u'-- ValueError: %s\n' % err
+                            yield Comment, '-- ValueError: %s\n' % err
 
                         stack = FilterStack()
                         stack.preprocess.append(filtr)
@@ -272,17 +250,10 @@ class ReindentFilter:
         self._curr_stmt = None
         self._last_stmt = None
 
-    def _flatten_up_to_token(self, token):
-        """Yields all tokens up to token plus the next one."""
-        # helper for _get_offset
-        iterator = self._curr_stmt.flatten()
-        for t in iterator:
-            yield t
-            if t == token:
-                raise StopIteration
-
     def _get_offset(self, token):
-        raw = ''.join(map(unicode, self._flatten_up_to_token(token)))
+        all_ = list(self._curr_stmt.flatten())
+        idx = all_.index(token)
+        raw = ''.join(str(x) for x in all_[:idx + 1])
         line = raw.splitlines()[-1]
         # Now take current offset into account and return relative offset.
         full_offset = len(line) - len(self.char * (self.width * self.indent))
@@ -290,19 +261,13 @@ class ReindentFilter:
 
     def nl(self):
         # TODO: newline character should be configurable
-        space = (self.char * ((self.indent * self.width) + self.offset))
-        # Detect runaway indenting due to parsing errors
-        if len(space) > 200:
-            # something seems to be wrong, flip back
-            self.indent = self.offset = 0
-            space = (self.char * ((self.indent * self.width) + self.offset))
-        ws = '\n' + space
+        ws = '\n' + (self.char * ((self.indent * self.width) + self.offset))
         return sql.Token(T.Whitespace, ws)
 
     def _split_kwds(self, tlist):
-        split_words = ('FROM', 'STRAIGHT_JOIN$', 'JOIN$', 'AND', 'OR',
+        split_words = ('FROM', 'JOIN$', 'AND', 'OR',
                        'GROUP', 'ORDER', 'UNION', 'VALUES',
-                       'SET', 'BETWEEN', 'EXCEPT')
+                       'SET', 'BETWEEN')
 
         def _next_token(i):
             t = tlist.token_next_match(i, T.Keyword, split_words,
@@ -323,8 +288,8 @@ class ReindentFilter:
                 offset += 1
             if (prev
                 and isinstance(prev, sql.Comment)
-                and (unicode(prev).endswith('\n')
-                     or unicode(prev).endswith('\r'))):
+                and (str(prev).endswith('\n')
+                     or str(prev).endswith('\r'))):
                 nl = tlist.token_next(token)
             else:
                 nl = self.nl()
@@ -428,7 +393,7 @@ class ReindentFilter:
         self._process(stmt)
         if isinstance(stmt, sql.Statement):
             if self._last_stmt is not None:
-                if unicode(self._last_stmt).endswith('\n'):
+                if str(self._last_stmt).endswith('\n'):
                     nl = '\n'
                 else:
                     nl = '\n\n'
@@ -460,7 +425,7 @@ class RightMarginFilter:
                   and not token.__class__ in self.keep_together):
                 token.tokens = self._process(stack, token, token.tokens)
             else:
-                val = unicode(token)
+                val = str(token)
                 if len(self.line) + len(val) > self.width:
                     match = re.search('^ +', self.line)
                     if match is not None:
@@ -534,9 +499,11 @@ class ColumnsSelect:
 class SerializerUnicode:
 
     def process(self, stack, stmt):
-        raw = unicode(stmt)
-        lines = split_unquoted_newlines(raw)
-        res = '\n'.join(line.rstrip() for line in lines)
+        raw = str(stmt)
+        add_nl = raw.endswith('\n')
+        res = '\n'.join(line.rstrip() for line in raw.splitlines())
+        if add_nl:
+            res += '\n'
         return res
 
 
@@ -544,7 +511,7 @@ def Tokens2Unicode(stream):
     result = ""
 
     for _, value in stream:
-        result += unicode(value)
+        result += str(value)
 
     return result
 
@@ -566,7 +533,7 @@ class OutputFilter:
         else:
             varname = self.varname
 
-        has_nl = len(unicode(stmt).strip().splitlines()) > 1
+        has_nl = len(str(stmt).strip().splitlines()) > 1
         stmt.tokens = self._process(stmt.tokens, varname, has_nl)
         return stmt
 
