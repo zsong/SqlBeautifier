@@ -215,7 +215,7 @@ class Lexer(object, metaclass=LexerMeta):
         self.filters = []
 
     def add_filter(self, filter_, **options):
-        from sqlparse.filters import Filter
+        from sqlparse3.filters import Filter
         if not isinstance(filter_, Filter):
             filter_ = filter_(**options)
         self.filters.append(filter_)
