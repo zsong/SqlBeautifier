@@ -3,6 +3,7 @@
 """This module contains classes representing syntactical elements of SQL."""
 
 import re
+import sys
 
 from sqlparse import tokens as T
 
@@ -19,16 +20,24 @@ class Token(object):
 
     def __init__(self, ttype, value):
         self.value = value
-        self.normalized = value.upper() if ttype in T.Keyword else value
+        if ttype in T.Keyword:
+            self.normalized = value.upper()
+        else:
+            self.normalized = value
         self.ttype = ttype
         self.is_keyword = ttype in T.Keyword
         self.parent = None
 
     def __str__(self):
-        return str(self).encode('utf-8')
+        if sys.version_info[0] == 3:
+            return self.value
+        else:
+            return unicode(self).encode('utf-8')
 
     def __repr__(self):
-        short = self._get_repr_value().encode('utf-8')
+        short = self._get_repr_value()
+        if sys.version_info[0] < 3:
+            short = short.encode('utf-8')
         return '<%s \'%s\' at 0x%07x>' % (self._get_repr_name(),
                                           short, id(self))
 
@@ -39,17 +48,18 @@ class Token(object):
     def to_unicode(self):
         """Returns a unicode representation of this object.
 
-        @deprecated: please use __unicode__()
+        .. deprecated:: 0.1.5
+           Use ``unicode(token)`` (for Python 3: ``str(token)``) instead.
         """
-        return str(self)
+        return unicode(self)
 
     def _get_repr_name(self):
         return str(self.ttype).split('.')[-1]
 
     def _get_repr_value(self):
-        raw = str(self)
+        raw = unicode(self)
         if len(raw) > 7:
-            raw = raw[:6] + '...'
+            raw = raw[:6] + u'...'
         return re.sub('\s+', ' ', raw)
 
     def flatten(self):
@@ -73,7 +83,7 @@ class Token(object):
             return type_matched
 
         if regex:
-            if isinstance(values, str):
+            if isinstance(values, basestring):
                 values = set([values])
 
             if self.ttype is T.Keyword:
@@ -86,7 +96,7 @@ class Token(object):
                     return True
             return False
 
-        if isinstance(values, str):
+        if isinstance(values, basestring):
             if self.is_keyword:
                 return values.upper() == self.normalized
             return values == self.value
@@ -147,10 +157,22 @@ class TokenList(Token):
         if tokens is None:
             tokens = []
         self.tokens = tokens
-        Token.__init__(self, None, str(self))
+        Token.__init__(self, None, self._to_string())
 
     def __unicode__(self):
-        return ''.join(str(x) for x in self.flatten())
+        return self._to_string()
+
+    def __str__(self):
+        str_ = self._to_string()
+        if sys.version_info[0] < 2:
+            str_ = str_.encode('utf-8')
+        return str_
+
+    def _to_string(self):
+        if sys.version_info[0] == 3:
+            return ''.join(x.value for x in self.flatten())
+        else:
+            return ''.join(unicode(x) for x in self.flatten())
 
     def _get_repr_name(self):
         return self.__class__.__name__
@@ -163,9 +185,9 @@ class TokenList(Token):
                 pre = ' +-'
             else:
                 pre = ' | '
-            print('%s%s%d %s \'%s\'' % (indent, pre, idx,
+            print '%s%s%d %s \'%s\'' % (indent, pre, idx,
                                         token._get_repr_name(),
-                                        token._get_repr_value()))
+                                        token._get_repr_value())
             if (token.is_group() and (max_depth is None or depth < max_depth)):
                 token._pprint_tree(max_depth, depth + 1)
 
@@ -176,6 +198,15 @@ class TokenList(Token):
         if val[0] in ('"', '\'') and val[-1] == val[0]:
             val = val[1:-1]
         return val
+
+    def get_token_at_offset(self, offset):
+        """Returns the token that is on position offset."""
+        idx = 0
+        for token in self.flatten():
+            end = idx + len(token.value)
+            if idx <= offset <= end:
+                return token
+            idx = end
 
     def flatten(self):
         """Generator yielding ungrouped tokens.
@@ -249,7 +280,7 @@ class TokenList(Token):
         if not isinstance(idx, int):
             idx = self.token_index(idx)
 
-        for n in range(idx, len(self.tokens)):
+        for n in xrange(idx, len(self.tokens)):
             token = self.tokens[n]
             if token.match(ttype, value, regex):
                 return token
@@ -345,9 +376,9 @@ class TokenList(Token):
         """Inserts *token* before *where*."""
         self.tokens.insert(self.token_index(where), token)
 
-    def insert_after(self, where, token):
+    def insert_after(self, where, token, skip_ws=True):
         """Inserts *token* after *where*."""
-        next_token = self.token_next(where)
+        next_token = self.token_next(where, skip_ws=skip_ws)
         if next_token is None:
             self.tokens.append(token)
         else:
@@ -373,7 +404,7 @@ class TokenList(Token):
             alias = next_
         if isinstance(alias, Identifier):
             return alias.get_name()
-        return self._remove_quotes(str(alias))
+        return self._remove_quotes(unicode(alias))
 
     def get_name(self):
         """Returns the name of this identifier.
@@ -462,7 +493,14 @@ class Identifier(TokenList):
         next_ = self.token_next(self.token_index(marker), False)
         if next_ is None:
             return None
-        return str(next_)
+        return unicode(next_)
+
+    def get_ordering(self):
+        """Returns the ordering or ``None`` as uppercase string."""
+        ordering = self.token_next_by_type(0, T.Keyword.Order)
+        if ordering is None:
+            return None
+        return ordering.value.upper()
 
 
 class IdentifierList(TokenList):
@@ -507,6 +545,14 @@ class For(TokenList):
 class Comparison(TokenList):
     """A comparison used for example in WHERE clauses."""
     __slots__ = ('value', 'ttype', 'tokens')
+
+    @property
+    def left(self):
+        return self.tokens[0]
+
+    @property
+    def right(self):
+        return self.tokens[-1]
 
 
 class Comment(TokenList):
@@ -580,4 +626,14 @@ class Function(TokenList):
         for t in parenthesis.tokens:
             if isinstance(t, IdentifierList):
                 return t.get_identifiers()
+            elif isinstance(t, Identifier) or \
+                isinstance(t, Function) or \
+                t.ttype in T.Literal:
+                return [t,]
         return []
+
+
+class Begin(TokenList):
+    """A BEGIN/END block."""
+
+    __slots__ = ('value', 'ttype', 'tokens')

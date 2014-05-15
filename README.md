@@ -1,7 +1,7 @@
 SqlBeautifier
 ============================
 
-A sublime plugin to format SQL using sqlparse library https://code.google.com/p/python-sqlparse/.
+A sublime plugin to format SQL using sqlparse library maintained by *[andialbrecht](https://github.com/andialbrecht)* at https://github.com/andialbrecht/sqlparse.
 
 ##### The default key binding for Mac is
 
