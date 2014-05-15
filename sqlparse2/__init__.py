@@ -10,9 +10,9 @@ __version__ = '0.1.5'
 
 
 # Setup namespace
-from sqlparse import engine
-from sqlparse import filters
-from sqlparse import formatter
+from sqlparse2 import engine
+from sqlparse2 import filters
+from sqlparse2 import formatter
 
 # Deprecated in 0.1.5. Will be removed in 0.2.0
 from sqlparse.exceptions import SQLParseError
@@ -59,10 +59,10 @@ def split(sql):
     """
     stack = engine.FilterStack()
     stack.split_statements = True
-    return [str(stmt) for stmt in stack.run(sql)]
+    return [unicode(stmt) for stmt in stack.run(sql)]
 
 
-from sqlparse.engine.filter import StatementFilter
+from sqlparse2.engine.filter import StatementFilter
 
 
 def split2(stream):

@@ -6,9 +6,9 @@ Created on 17/05/2012
 Several utility functions to extract info from the SQL sentences
 '''
 
-from sqlparse.filters import ColumnsSelect, Limit
-from sqlparse.pipeline import Pipeline
-from sqlparse.tokens import Keyword, Whitespace
+from sqlparse3.filters import ColumnsSelect, Limit
+from sqlparse3.pipeline import Pipeline
+from sqlparse3.tokens import Keyword, Whitespace
 
 
 def getlimit(stream):
@@ -33,7 +33,7 @@ def getcolumns(stream):
     return pipe(stream)
 
 
-class IsType():
+class IsType(object):
     """Functor that return is the statement is of a specific type"""
     def __init__(self, type):
         self.type = type

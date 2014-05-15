@@ -1,4 +1,4 @@
-from sqlparse import tokens
+from sqlparse3 import tokens
 
 KEYWORDS = {
     'ABORT': tokens.Keyword,
@@ -17,7 +17,7 @@ KEYWORDS = {
     'ANALYZE': tokens.Keyword,
     'ANY': tokens.Keyword,
     'ARE': tokens.Keyword,
-    'ASC': tokens.Keyword,
+    'ASC': tokens.Keyword.Order,
     'ASENSITIVE': tokens.Keyword,
     'ASSERTION': tokens.Keyword,
     'ASSIGNMENT': tokens.Keyword,
@@ -124,7 +124,7 @@ KEYWORDS = {
     'DELIMITER': tokens.Keyword,
     'DELIMITERS': tokens.Keyword,
     'DEREF': tokens.Keyword,
-    'DESC': tokens.Keyword,
+    'DESC': tokens.Keyword.Order,
     'DESCRIBE': tokens.Keyword,
     'DESCRIPTOR': tokens.Keyword,
     'DESTROY': tokens.Keyword,
@@ -423,7 +423,7 @@ KEYWORDS = {
 
     'TABLE': tokens.Keyword,
     'TABLE_NAME': tokens.Keyword,
-    ' TEMP': tokens.Keyword,
+    'TEMP': tokens.Keyword,
     'TEMPLATE': tokens.Keyword,
     'TEMPORARY': tokens.Keyword,
     'TERMINATE': tokens.Keyword,
@@ -465,6 +465,7 @@ KEYWORDS = {
     'UNTIL': tokens.Keyword,
     'UPPER': tokens.Keyword,
     'USAGE': tokens.Keyword,
+    'USE': tokens.Keyword,
     'USER': tokens.Keyword,
     'USER_DEFINED_TYPE_CATALOG': tokens.Keyword,
     'USER_DEFINED_TYPE_NAME': tokens.Keyword,
@@ -536,6 +537,7 @@ KEYWORDS_COMMON = {
     'FROM': tokens.Keyword,
     'INNER': tokens.Keyword,
     'JOIN': tokens.Keyword,
+    'STRAIGHT_JOIN': tokens.Keyword,
     'AND': tokens.Keyword,
     'OR': tokens.Keyword,
     'LIKE': tokens.Keyword,
@@ -548,6 +550,7 @@ KEYWORDS_COMMON = {
     'ORDER': tokens.Keyword,
     'LEFT': tokens.Keyword,
     'OUTER': tokens.Keyword,
+    'FULL': tokens.Keyword,
 
     'IF': tokens.Keyword,
     'END': tokens.Keyword,

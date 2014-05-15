@@ -4,13 +4,13 @@ import re
 
 from os.path import abspath, join
 
-from sqlparse import sql, tokens as T
-from sqlparse.engine import FilterStack
-from sqlparse.lexer import tokenize
-from sqlparse.pipeline import Pipeline
-from sqlparse.tokens import (Comment, Comparison, Keyword, Name, Punctuation,
+from sqlparse3 import sql, tokens as T
+from sqlparse3.engine import FilterStack
+from sqlparse3.lexer import tokenize
+from sqlparse3.pipeline import Pipeline
+from sqlparse3.tokens import (Comment, Comparison, Keyword, Name, Punctuation,
                              String, Whitespace)
-from sqlparse.utils import memoize_generator
+from sqlparse3.utils import memoize_generator
 
 
 # --------------------------
@@ -44,6 +44,27 @@ class IdentifierCaseFilter(_CaseFilter):
         for ttype, value in stream:
             if ttype in self.ttype and not value.strip()[0] == '"':
                 value = self.convert(value)
+            yield ttype, value
+
+
+class TruncateStringFilter:
+
+    def __init__(self, width, char):
+        self.width = max(width, 1)
+        self.char = str(char)
+
+    def process(self, stack, stream):
+        for ttype, value in stream:
+            if ttype is T.Literal.String.Single:
+                if value[:2] == '\'\'':
+                    inner = value[2:-2]
+                    quote = '\'\''
+                else:
+                    inner = value[1:-1]
+                    quote = '\''
+                if len(inner) > self.width:
+                    value = ''.join((quote, inner[:self.width], self.char,
+                                      quote))
             yield ttype, value
 
 
@@ -250,10 +271,17 @@ class ReindentFilter:
         self._curr_stmt = None
         self._last_stmt = None
 
+    def _flatten_up_to_token(self, token):
+        """Yields all tokens up to token plus the next one."""
+        # helper for _get_offset
+        iterator = self._curr_stmt.flatten()
+        for t in iterator:
+            yield t
+            if t == token:
+                raise StopIteration
+
     def _get_offset(self, token):
-        all_ = list(self._curr_stmt.flatten())
-        idx = all_.index(token)
-        raw = ''.join(str(x) for x in all_[:idx + 1])
+        raw = ''.join(map(str, self._flatten_up_to_token(token)))
         line = raw.splitlines()[-1]
         # Now take current offset into account and return relative offset.
         full_offset = len(line) - len(self.char * (self.width * self.indent))
@@ -261,11 +289,17 @@ class ReindentFilter:
 
     def nl(self):
         # TODO: newline character should be configurable
-        ws = '\n' + (self.char * ((self.indent * self.width) + self.offset))
+        space = (self.char * ((self.indent * self.width) + self.offset))
+        # Detect runaway indenting due to parsing errors
+        if len(space) > 200:
+            # something seems to be wrong, flip back
+            self.indent = self.offset = 0
+            space = (self.char * ((self.indent * self.width) + self.offset))
+        ws = '\n' + space
         return sql.Token(T.Whitespace, ws)
 
     def _split_kwds(self, tlist):
-        split_words = ('FROM', 'JOIN$', 'AND', 'OR',
+        split_words = ('FROM', 'STRAIGHT_JOIN$', 'JOIN$', 'AND', 'OR',
                        'GROUP', 'ORDER', 'UNION', 'VALUES',
                        'SET', 'BETWEEN')
 

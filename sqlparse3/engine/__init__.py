@@ -5,9 +5,9 @@
 
 """filter"""
 
-from sqlparse import lexer
-from sqlparse.engine import grouping
-from sqlparse.engine.filter import StatementFilter
+from sqlparse3 import lexer
+from sqlparse3.engine import grouping
+from sqlparse3.engine.filter import StatementFilter
 
 # XXX remove this when cleanup is complete
 Filter = object
@@ -36,8 +36,8 @@ class FilterStack(object):
     def full_analyze(self):
         self.enable_grouping()
 
-    def run(self, sql):
-        stream = lexer.tokenize(sql)
+    def run(self, sql, encoding=None):
+        stream = lexer.tokenize(sql, encoding)
         # Process token stream
         if self.preprocess:
             for filter_ in self.preprocess:

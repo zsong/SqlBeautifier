@@ -14,18 +14,9 @@
 
 import re
 
-from sqlparse import tokens
-from sqlparse.keywords import KEYWORDS, KEYWORDS_COMMON
-
-try:
-    # Python 3
-    from io import BytesIO as StringIO
-except (ImportError):
-    # Python 2
-    from StringIO import StringIO
-
-
-import collections
+from sqlparse2 import tokens
+from sqlparse2.keywords import KEYWORDS, KEYWORDS_COMMON
+from cStringIO import StringIO
 
 
 class include(str):
@@ -89,12 +80,12 @@ class LexerMeta(type):
 
             try:
                 rex = re.compile(tdef[0], rflags).match
-            except Exception as err:
+            except Exception, err:
                 raise ValueError(("uncompilable regex %r in state"
                                   " %r of %r: %s"
                                   % (tdef[0], state, cls, err)))
 
-            assert type(tdef[1]) is tokens._TokenType or isinstance(tdef[1], collections.Callable), \
+            assert type(tdef[1]) is tokens._TokenType or callable(tdef[1]), \
                    ('token type must be simple type or callable, not %r'
                     % (tdef[1],))
 
@@ -143,7 +134,7 @@ class LexerMeta(type):
         cls._tmpname = 0
         processed = cls._all_tokens[cls.__name__] = {}
         #tokendefs = tokendefs or cls.tokens[name]
-        for state in list(cls.tokens.keys()):
+        for state in cls.tokens.keys():
             cls._process_state(cls.tokens, processed, state)
         return processed
 
@@ -160,7 +151,9 @@ class LexerMeta(type):
         return type.__call__(cls, *args, **kwds)
 
 
-class Lexer(object, metaclass=LexerMeta):
+class Lexer(object):
+
+    __metaclass__ = LexerMeta
 
     encoding = 'utf-8'
     stripall = False
@@ -230,8 +223,8 @@ class Lexer(object, metaclass=LexerMeta):
         if self.encoding == 'guess':
             try:
                 text = text.decode('utf-8')
-                if text.startswith('\ufeff'):
-                    text = text[len('\ufeff'):]
+                if text.startswith(u'\ufeff'):
+                    text = text[len(u'\ufeff'):]
             except UnicodeDecodeError:
                 text = text.decode('latin1')
         else:
@@ -250,13 +243,13 @@ class Lexer(object, metaclass=LexerMeta):
         Also preprocess the text, i.e. expand tabs and strip it if
         wanted and applies registered filters.
         """
-        if isinstance(text, str):
+        if isinstance(text, basestring):
             if self.stripall:
                 text = text.strip()
             elif self.stripnl:
                 text = text.strip('\n')
 
-            if isinstance(text, str):
+            if isinstance(text, unicode):
                 text = StringIO(text.encode('utf-8'))
                 self.encoding = 'utf-8'
             else:
@@ -341,7 +334,7 @@ class Lexer(object, metaclass=LexerMeta):
                         pos += 1
                         statestack = ['root']
                         statetokens = tokendefs['root']
-                        yield pos, tokens.Text, '\n'
+                        yield pos, tokens.Text, u'\n'
                         continue
                     yield pos, tokens.Error, text[pos]
                     pos += 1
