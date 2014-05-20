@@ -9,20 +9,24 @@ if sys.version_info >= (3, 0):
     import sqlparse3 as sqlparse
 else:
     import sqlparse2 as sqlparse
-    
-class SqlBeautifierCommand(sublime_plugin.TextCommand):
-    def normalize_line_endings(self, string):
-        string = string.replace('\r\n', '\n').replace('\r', '\n')
-        line_endings = self.view.settings().get('default_line_ending')
-        if line_endings == 'windows':
-            string = string.replace('\n', '\r\n')
-        elif line_endings == 'mac':
-            string = string.replace('\n', '\r')
-        return string
 
+
+def plugin_loaded():
+    global settings
+    settings = sublime.load_settings('SQL Beautifier.sublime-settings')
+
+
+class SqlBeautifierCommand(sublime_plugin.TextCommand):
     def format_sql(self, raw_sql):
         try:
-            return sqlparse.format(raw_sql, reindent=True, keyword_case='upper')
+            return sqlparse.format(raw_sql, 
+                keyword_case=settings.get("keyword_case"),
+                identifier_case=settings.get("identifier_case"),
+                strip_comments=settings.get("strip_comments"),
+                indent_tabs=settings.get("indent_tabs"),
+                indent_width=settings.get("indent_width"),
+                reindent=settings.get("reindent") 
+            )
         except Exception as e:
             print(e)
             return None
