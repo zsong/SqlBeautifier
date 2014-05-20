@@ -15,7 +15,7 @@
                             {
                                 "caption": "Settings Default", 
                                 "args": {
-                                    "file": "${packages}/SQL Beautifier/SQL Beautifier.sublime-settings"
+                                    "file": "${packages}/SqlBeautifier/SQL Beautifier.sublime-settings"
                                 }, 
                                 "command": "open_file"
                             }, 
