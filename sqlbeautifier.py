@@ -11,6 +11,10 @@ else:
     import sqlparse2 as sqlparse
 
 
+# for ST2
+settings = sublime.load_settings('SQL Beautifier.sublime-settings')
+
+# for ST3
 def plugin_loaded():
     global settings
     settings = sublime.load_settings('SQL Beautifier.sublime-settings')
