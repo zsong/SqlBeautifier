@@ -48,5 +48,3 @@ Here is the list of options the formatter supports:
 - **indent_tabs**: If True tabs instead of spaces are used for indentation.
 
 - **indent_width**: The width of the indentation, defaults to 2.
-
-- **output_format**: If given the output is additionally formatted to be used as a variable in a programming language. Allowed values are “python” and “php”.
