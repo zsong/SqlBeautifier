@@ -35,13 +35,19 @@ class SqlBeautifierCommand(sublime_plugin.TextCommand):
             print(e)
             return None
 
-    def run(self, edit):
-        for region in self.view.sel():
-            if not region.empty():
-                selected_text = self.view.substr(region)
-                
-                foramtted_text = self.format_sql(selected_text)
+    def replace_region_with_formatted_sql(self, edit, region):
+        selected_text = self.view.substr(region)
+        foramtted_text = self.format_sql(selected_text)
+        self.view.replace(edit, region, foramtted_text)
 
-                if foramtted_text:
-                    self.view.replace(edit, region, foramtted_text)
-                    self.view.set_syntax_file("Packages/SQL/SQL.tmLanguage")
+    def run(self, edit):
+        window = self.view.window()
+        view = window.active_view()
+
+        for region in self.view.sel():
+            if region.empty():
+                selection = sublime.Region(0, self.view.size())
+                self.replace_region_with_formatted_sql(edit, selection)
+                self.view.set_syntax_file("Packages/SQL/SQL.tmLanguage")
+            else:
+                self.replace_region_with_formatted_sql(edit, region)
