@@ -37,9 +37,9 @@ This overrides the default option at *Package Settings -> Sql Beautifier -> Sett
 
 Here is the list of options the formatter supports:
 
-- **keyword_case**: Changes how keywords are formatted. Allowed values are “upper”, “lower” and “capitalize”.
+- **keyword_case**: Changes how keywords are formatted. Allowed values are “upper”, “lower” and “capitalize” and null (leaves case intact).
 
-- **identifier_case**: Changes how identifiers are formatted. Allowed values are “upper”, “lower”, and “capitalize”.
+- **identifier_case**: Changes how identifiers are formatted. Allowed values are “upper”, “lower”, and “capitalize” and null (leaves case intact).
 
 - **strip_comments**: If True comments are removed from the statements.
 
