@@ -23,14 +23,19 @@ def plugin_loaded():
 class SqlBeautifierCommand(sublime_plugin.TextCommand):
     def format_sql(self, raw_sql):
         try:
-            return sqlparse.format(raw_sql, 
+            formatted_sql = sqlparse.format(raw_sql,
                 keyword_case=settings.get("keyword_case"),
                 identifier_case=settings.get("identifier_case"),
                 strip_comments=settings.get("strip_comments"),
                 indent_tabs=settings.get("indent_tabs"),
                 indent_width=settings.get("indent_width"),
-                reindent=settings.get("reindent") 
+                reindent=settings.get("reindent")
             )
+
+            if self.view.settings().get('ensure_newline_at_eof_on_save'):
+                formatted_sql += "\n"
+
+            return formatted_sql
         except Exception as e:
             print(e)
             return None
