@@ -10,11 +10,13 @@ Please install Sublime [Package Control](https://sublime.wbond.net/installation)
 
 
 ###Settings
-#### The default key binding for Mac is
+#### The default key binding for Mac is 
 
 ```
 { "keys": ["super+k", "super+f"], "command": "sql_beautifier" }
 ```
+
+* Kindly note that the ` super ` key here is generally replaced by ` Command (⌘)` key
 
 #### The default key binding for Windows / Linux is
 
